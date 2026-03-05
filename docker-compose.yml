@@ -11,4 +11,7 @@ services:
       APP_TIMEZONE: Europe/Vaduz
       DB_PATH: /app/database/clauswetter.db
     volumes:
-      - ./database:/app/database
+      - app_database:/app/database
+
+volumes:
+  app_database:
