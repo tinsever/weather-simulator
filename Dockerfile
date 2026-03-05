@@ -6,7 +6,11 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-di
 FROM php:8.3-cli
 WORKDIR /app
 
-RUN docker-php-ext-install pdo pdo_sqlite
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends libsqlite3-dev; \
+    docker-php-ext-install pdo_sqlite; \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
