@@ -1,0 +1,13 @@
+.git
+.gitignore
+.DS_Store
+.env
+.env.*
+!.env.example
+vendor
+node_modules
+__MACOSX
+*.log
+*.db
+*.sqlite
+*.sqlite3

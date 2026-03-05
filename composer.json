@@ -1,0 +1,17 @@
+{
+    "name": "eulenmeteo/php",
+    "description": "Eulenmeteo Weather Simulation - PHP Version",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Config\\": "config/",
+            "Models\\": "src/Models/",
+            "Engine\\": "src/Engine/",
+            "Controllers\\": "src/Controllers/",
+            "Scheduler\\": "src/Scheduler/"
+        }
+    },
+    "require": {
+        "php": ">=8.1"
+    }
+}

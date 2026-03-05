@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wetterdienst Eulenthal – Fürstentum Eulenthal</title>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>">
+    
+    <link rel="stylesheet" href="css/styles.css?v=2">
+    <link rel="stylesheet" href="css/weather-icons.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top accent bar -->
+        <div class="top-accent"></div>
+        
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <div class="coat-of-arms">🦉</div>
+                    <div class="brand-text">
+                        <span class="brand-title">Wetterdienst Eulenthal</span>
+                        <span class="brand-subtitle">Fürstentum Eulenthal · Meteorologische Landesanstalt</span>
+                    </div>
+                </div>
+                <nav class="header-nav">
+                    <a href="#" class="nav-link active">Wetter</a>
+                    <a href="https://fürstentum-eulenthal.de" class="nav-link" target="_blank">Forum</a>
+                </nav>
+            </div>
+        </header>
+
+        <div id="severeBanner" class="severe-banner hidden"></div>
+
+        <main class="main-content">
+            <div class="page-shell">
+                <div class="view-tabs">
+                    <button class="view-tab active" data-view="map">Kartenansicht</button>
+                    <button class="view-tab" data-view="table">Tabellenansicht</button>
+                </div>
+                
+                <div class="content-area" id="mapView">
+                    <div class="map-wrapper">
+                        <div id="map"></div>
+                        
+                        <div class="map-controls">
+                            <button class="map-control-btn" id="zoomIn" title="Vergrößern">+</button>
+                            <button class="map-control-btn" id="zoomOut" title="Verkleinern">−</button>
+                            <button class="map-control-btn" id="resetView" title="Ansicht zurücksetzen">⌂</button>
+                        </div>
+
+                        <div class="temp-legend" id="tempLegend" style="display:none;">
+                            <div class="legend-gradient"></div>
+                            <div class="legend-labels">
+                                <span>-15°</span>
+                                <span>0°</span>
+                                <span>15°</span>
+                                <span>30°</span>
+                            </div>
+                        </div>
+
+                        <div class="station-overlay" id="stationOverlay">
+                            <button class="overlay-close" id="overlayClose">×</button>
+                            <div class="overlay-content" id="stationDetail"></div>
+                        </div>
+                    </div>
+
+                    <div class="day-bar">
+                        <div class="day-selector" id="daySelector"></div>
+                        <div class="day-bar-datetime" id="dayBarDatetime"></div>
+                    </div>
+                    
+                    <div class="animation-controls" id="animationControls">
+                        <button class="anim-btn" id="animatePlay" title="Animation starten">▶ Abspielen</button>
+                        <button class="anim-btn hidden" id="animatePause" title="Animation pausieren">⏸ Pause</button>
+                        <input type="range" id="hourSlider" min="0" max="23" value="12" class="hour-slider">
+                        <span class="hour-display" id="currentHourDisplay">12:00</span>
+                        <span class="layer-separator"></span>
+                        <button class="layer-btn" id="layerTemp" title="Temperatur">🌡️</button>
+                        <button class="layer-btn" id="layerWeather" title="Niederschlag">🌧️</button>
+                        <button class="layer-btn active" id="layerClouds" title="Bewölkung">☁️</button>
+                        <button class="layer-btn" id="layerWind" title="Wind">💨</button>
+                        <button class="layer-btn" id="layerPressure" title="Druckfeld &amp; Isobaren">🔵</button>
+                        <button class="layer-btn" id="layerFront" title="Fronten">🔶</button>
+                    </div>
+
+                    <section class="prognosis-section" id="prognosisSection">
+                        <div class="prognosis-content-area" id="prognosisContent">
+                            <p class="prognosis-empty">Prognose wird geladen...</p>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="content-area hidden" id="tableView">
+                    <div class="table-container">
+                        <table class="weather-table" id="weatherTable">
+                            <thead>
+                                <tr>
+                                    <th>Station</th>
+                                    <th>Region</th>
+                                    <th>Höhe</th>
+                                    <th>Wetter</th>
+                                    <th>Temperatur</th>
+                                    <th>Gefühlt</th>
+                                    <th>Feuchte</th>
+                                    <th>Wind</th>
+                                    <th>Niederschlag</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weatherTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <section id="warningsPanel" class="warnings-section hidden">
+                    <div class="warnings-section-head">
+                        <h3>Weitere Wetterwarnungen</h3>
+                    </div>
+                    <div id="warningsList"></div>
+                </section>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span class="footer-status" id="statusText">Bereit</span>
+                    <span class="footer-update" id="lastUpdate">Letzte Aktualisierung: —</span>
+                </div>
+                <div class="footer-center">
+                    <a href="api/warnings/rss" class="footer-rss-link" target="_blank">📡 RSS Wetterwarnungen</a>
+                </div>
+                <div class="footer-right">
+                    <span class="footer-copyright">© Wetterdienst Eulenthal</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <script src="js/map.js?v=3"></script>
+</body>
+</html>

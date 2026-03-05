@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Eulenmeteo</title>
+    <link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <a href="/admin" class="sidebar-logo">
+                    <span>☁️</span>
+                    Eulenmeteo
+                </a>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Overview</div>
+                    <a href="#dashboard" class="nav-link active" data-page="dashboard">
+                        <span class="nav-link-icon">📊</span>
+                        Dashboard
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Management</div>
+                    <a href="#regions" class="nav-link" data-page="regions">
+                        <span class="nav-link-icon">🗺️</span>
+                        Regions
+                    </a>
+                    <a href="#stations" class="nav-link" data-page="stations">
+                        <span class="nav-link-icon">📡</span>
+                        Weather Stations
+                    </a>
+                    <a href="#features" class="nav-link" data-page="features">
+                        <span class="nav-link-icon">🏔️</span>
+                        Topographic Features
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Tools</div>
+                    <a href="/" class="nav-link" target="_blank">
+                        <span class="nav-link-icon">🌤️</span>
+                        Weather Map
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-secondary btn-full btn-small">
+                    Logout
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="admin-main">
+            <header class="admin-header">
+                <h1 id="pageTitle">Dashboard</h1>
+                <div id="headerActions"></div>
+            </header>
+            
+            <div class="admin-content" id="mainContent">
+                <!-- Content loaded dynamically -->
+            </div>
+        </main>
+    </div>
+    
+    <!-- Modal Template -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Modal Title</h2>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Modal content loaded dynamically -->
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+                <button class="btn btn-primary" id="modalSave">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notifications Container -->
+    <div class="notifications-container" id="notifications"></div>
+    
+    <!-- Scripts -->
+    <script src="/admin/js/admin.js"></script>
+</body>
+</html>
