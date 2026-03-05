@@ -22,9 +22,17 @@ if (file_exists($dbPath)) {
 }
 
 $schemaFiles = [
-    __DIR__ . '/../database/schema.sql',
-    __DIR__ . '/../database/schema_forecast.sql',
+    __DIR__ . '/../resources/sql/schema.sql',
+    __DIR__ . '/../resources/sql/schema_forecast.sql',
 ];
+
+// Backward-compatible fallback for environments that still keep schema under /database.
+if (!file_exists($schemaFiles[0]) || !file_exists($schemaFiles[1])) {
+    $schemaFiles = [
+        __DIR__ . '/../database/schema.sql',
+        __DIR__ . '/../database/schema_forecast.sql',
+    ];
+}
 
 foreach ($schemaFiles as $schemaFile) {
     if (!file_exists($schemaFile)) {
