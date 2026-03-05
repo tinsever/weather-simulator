@@ -8,12 +8,13 @@ WORKDIR /app
 
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends libsqlite3-dev; \
+    apt-get install -y --no-install-recommends libsqlite3-dev gosu; \
     docker-php-ext-install pdo_sqlite; \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
+COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p /app/database && chown -R www-data:www-data /app
 
@@ -23,6 +24,4 @@ ENV DB_PATH=/app/database/clauswetter.db
 
 EXPOSE 8080
 
-USER www-data
-
-CMD ["sh", "-lc", "php -d variables_order=EGPCS scripts/bootstrap.php && php -d variables_order=EGPCS -S 0.0.0.0:${PORT:-8080} -t . index.php"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
