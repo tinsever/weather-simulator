@@ -59,20 +59,21 @@ location / {
 }
 ```
 
-## Coolify + Nixpacks
+## Coolify + Dockerfile
 
-This repo includes `nixpacks.toml`.
+This repo includes a production `Dockerfile` (multi-stage build with Composer).
 
-Build/install:
-- `composer install --no-dev --optimize-autoloader --no-interaction`
-
-Start command:
-- `php -d variables_order=EGPCS scripts/bootstrap.php && php -d variables_order=EGPCS -S 0.0.0.0:${PORT:-8080} -t . index.php`
+In Coolify, use **Dockerfile** as build pack.
 
 In Coolify, set at least:
 - `ADMIN_PASSWORD`
 - `CRON_SECRET`
 - `SESSION_SECRET`
+
+Optional:
+- `APP_DEBUG=false`
+- `APP_TIMEZONE=Europe/Vaduz`
+- `DB_PATH=/app/database/clauswetter.db`
 
 ## Cron Job
 

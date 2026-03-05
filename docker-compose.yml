@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      ADMIN_PASSWORD: change-me
+      CRON_SECRET: change-me
+      SESSION_SECRET: change-me
+      APP_DEBUG: "false"
+      APP_TIMEZONE: Europe/Vaduz
+      DB_PATH: /app/database/clauswetter.db
+    volumes:
+      - ./database:/app/database
