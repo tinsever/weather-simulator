@@ -2,8 +2,7 @@
 
 declare(strict_types=1);
 
-function envBool(string $key, bool $default = false): bool
-{
+$envBool = static function (string $key, bool $default = false): bool {
     $value = getenv($key);
     if ($value === false) {
         return $default;
@@ -11,13 +10,13 @@ function envBool(string $key, bool $default = false): bool
 
     $normalized = strtolower(trim($value));
     return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
-}
+};
 
 return [
     'app' => [
         'name' => 'Eulenmeteo',
         'version' => '2.0.0',
-        'debug' => envBool('APP_DEBUG', false),
+        'debug' => $envBool('APP_DEBUG', false),
         'timezone' => getenv('APP_TIMEZONE') ?: 'Europe/Vaduz',
     ],
     'database' => [
