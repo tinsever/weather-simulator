@@ -11,12 +11,20 @@ class Database
 
 	public static function getInstance(): PDO
 	{
-		if (self::$instance === null) {
-			$config = require __DIR__ . '/config.php';
-			$dbPath = $config['database']['path'];
+			if (self::$instance === null) {
+				$config = require __DIR__ . '/config.php';
+				$dbPath = $config['database']['path'];
+                $dbDir = dirname($dbPath);
 
-			try {
-				self::$instance = new PDO("sqlite:$dbPath");
+                if (!is_dir($dbDir) && !mkdir($dbDir, 0775, true) && !is_dir($dbDir)) {
+                    throw new \RuntimeException("Database directory cannot be created: {$dbDir}");
+                }
+                if (!is_writable($dbDir)) {
+                    throw new \RuntimeException("Database directory is not writable: {$dbDir}");
+                }
+
+				try {
+					self::$instance = new PDO("sqlite:$dbPath");
 				self::$instance->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 				self::$instance->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 

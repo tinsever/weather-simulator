@@ -15,6 +15,10 @@ if (!is_dir($dbDir) && !mkdir($dbDir, 0775, true) && !is_dir($dbDir)) {
     fwrite(STDERR, "Failed to create database directory: {$dbDir}\n");
     exit(1);
 }
+if (!is_writable($dbDir)) {
+    fwrite(STDERR, "Database directory is not writable: {$dbDir}\n");
+    exit(1);
+}
 
 if (file_exists($dbPath)) {
     fwrite(STDOUT, "Database already exists at {$dbPath}\n");
