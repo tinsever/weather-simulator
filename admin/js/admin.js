@@ -137,6 +137,24 @@ async function loadDashboard() {
     try {
         const response = await fetchAPI('/api/admin/stats');
         const stats = response.data;
+        const canImportLegacyDb = stats.stations === 0;
+        const importPanel = canImportLegacyDb ? `
+            <div class="data-table-container import-db-panel mt-2">
+                <div class="table-header">
+                    <h2>Import Existing Database</h2>
+                </div>
+                <div class="import-db-content">
+                    <p class="text-dim">No weather stations were found. You can import a legacy installation database to migrate regions, stations, weather data, and all related tables.</p>
+                    <form id="importDbForm" class="import-db-form">
+                        <input type="file" id="legacyDbFile" name="database_file" accept=".db,.sqlite,.sqlite3" required>
+                        <button type="submit" class="btn btn-primary" id="importDbBtn">
+                            <span>⬆</span> Import .db File
+                        </button>
+                    </form>
+                    <p class="text-muted text-small">Import is disabled automatically once weather stations already exist.</p>
+                </div>
+            </div>
+        ` : '';
         
         content.innerHTML = `
             <div class="stats-grid">
@@ -189,9 +207,68 @@ async function loadDashboard() {
                     </button>
                 </div>
             </div>
+            ${importPanel}
         `;
+
+        if (canImportLegacyDb) {
+            const importForm = document.getElementById('importDbForm');
+            if (importForm) {
+                importForm.addEventListener('submit', importLegacyDatabase);
+            }
+        }
     } catch (error) {
         content.innerHTML = `<div class="error-message">${error.message}</div>`;
+    }
+}
+
+async function importLegacyDatabase(event) {
+    event.preventDefault();
+
+    const fileInput = document.getElementById('legacyDbFile');
+    const submitButton = document.getElementById('importDbBtn');
+    const file = fileInput?.files?.[0];
+
+    if (!file) {
+        showNotification('warning', 'No File Selected', 'Please choose a .db file to import.');
+        return;
+    }
+
+    if (!confirm('This will replace the current database. Continue?')) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('database_file', file);
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Importing...';
+    }
+
+    try {
+        const response = await fetch('/api/admin/import-db', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || `API error: ${response.status}`);
+        }
+
+        const importedStations = data?.data?.weatherStations ?? 0;
+        const importedTables = data?.data?.tables ?? 0;
+        showNotification('success', 'Import Successful', `Imported ${importedStations} station(s) across ${importedTables} table(s).`);
+        await loadDashboard();
+    } catch (error) {
+        showNotification('error', 'Import Failed', error.message || 'Could not import database.');
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<span>⬆</span> Import .db File';
+        }
     }
 }
 

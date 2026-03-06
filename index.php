@@ -192,6 +192,7 @@ if (strpos($requestUri, '/api') === 0) {
 
         $adminRoutes = [
             'GET /stats'            => fn() => $admin->stats(),
+            'POST /import-db'       => fn() => $admin->importDatabase(),
             'GET /options'          => fn() => $admin->options(),
             'GET /regions'          => fn() => $admin->listRegions(),
             'POST /regions'         => fn() => $admin->createRegion(),

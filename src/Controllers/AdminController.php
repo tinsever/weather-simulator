@@ -93,6 +93,130 @@ class AdminController
         ]);
     }
 
+    public function importDatabase(): void
+    {
+        $this->requireAuth();
+
+        $db = Database::getInstance();
+        $stations = (int) $db->query('SELECT COUNT(*) FROM weather_stations')->fetchColumn();
+        if ($stations > 0) {
+            $this->json([
+                'success' => false,
+                'error' => 'Import is only allowed when no weather stations exist in the current installation.',
+            ], 400);
+            return;
+        }
+
+        if (!isset($_FILES['database_file']) || !is_array($_FILES['database_file'])) {
+            $this->json(['success' => false, 'error' => 'No database file uploaded.'], 400);
+            return;
+        }
+
+        $upload = $_FILES['database_file'];
+        $uploadError = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($uploadError !== UPLOAD_ERR_OK) {
+            $this->json(['success' => false, 'error' => $this->uploadErrorMessage($uploadError)], 400);
+            return;
+        }
+
+        $originalName = (string) ($upload['name'] ?? '');
+        $extension = strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
+        $allowedExtensions = ['db', 'sqlite', 'sqlite3'];
+        if ($extension !== '' && !in_array($extension, $allowedExtensions, true)) {
+            $this->json(['success' => false, 'error' => 'Please upload a .db, .sqlite, or .sqlite3 file.'], 400);
+            return;
+        }
+
+        $tmpPath = (string) ($upload['tmp_name'] ?? '');
+        if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+            $this->json(['success' => false, 'error' => 'Invalid uploaded file.'], 400);
+            return;
+        }
+
+        $config = require __DIR__ . '/../../config/config.php';
+        $dbPath = (string) ($config['database']['path'] ?? '');
+        if ($dbPath === '') {
+            $this->json(['success' => false, 'error' => 'Database path is not configured.'], 500);
+            return;
+        }
+
+        $dbDir = dirname($dbPath);
+        if (!is_dir($dbDir) && !mkdir($dbDir, 0775, true) && !is_dir($dbDir)) {
+            $this->json(['success' => false, 'error' => 'Database directory cannot be created.'], 500);
+            return;
+        }
+        if (!is_writable($dbDir)) {
+            $this->json(['success' => false, 'error' => 'Database directory is not writable.'], 500);
+            return;
+        }
+
+        $importPath = $dbDir . '/import-' . bin2hex(random_bytes(8)) . '.db';
+        if (!move_uploaded_file($tmpPath, $importPath)) {
+            $this->json(['success' => false, 'error' => 'Could not store uploaded database file.'], 500);
+            return;
+        }
+
+        $backupPath = $dbPath . '.backup-' . date('YmdHis');
+
+        try {
+            [$tables, $importedStations] = $this->inspectSQLiteFile($importPath);
+
+            // Close active connection before replacing the SQLite file.
+            Database::close();
+
+            if (file_exists($dbPath) && !rename($dbPath, $backupPath)) {
+                throw new \RuntimeException('Could not create a backup of the current database.');
+            }
+
+            if (!rename($importPath, $dbPath)) {
+                if (file_exists($backupPath)) {
+                    rename($backupPath, $dbPath);
+                }
+                throw new \RuntimeException('Could not replace the current database.');
+            }
+
+            $walPath = $dbPath . '-wal';
+            $shmPath = $dbPath . '-shm';
+            if (file_exists($walPath)) {
+                @unlink($walPath);
+            }
+            if (file_exists($shmPath)) {
+                @unlink($shmPath);
+            }
+
+            [$verifiedTables] = $this->inspectSQLiteFile($dbPath);
+
+            if (empty($verifiedTables)) {
+                throw new \RuntimeException('Imported database appears to be empty.');
+            }
+
+            if (file_exists($backupPath)) {
+                @unlink($backupPath);
+            }
+
+            $this->json([
+                'success' => true,
+                'message' => 'Database imported successfully.',
+                'data' => [
+                    'tables' => count($tables),
+                    'weatherStations' => $importedStations,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            if (file_exists($dbPath) && file_exists($backupPath)) {
+                @unlink($dbPath);
+                @rename($backupPath, $dbPath);
+            }
+
+            if (file_exists($importPath)) {
+                @unlink($importPath);
+            }
+
+            Database::close();
+            $this->json(['success' => false, 'error' => 'Import failed: ' . $e->getMessage()], 400);
+        }
+    }
+
     // ============================================
     // OPTIONS
     // ============================================
@@ -451,6 +575,42 @@ class AdminController
         $values[] = $id;
         $db = Database::getInstance();
         $db->prepare("UPDATE $table SET " . implode(', ', $fields) . " WHERE id = ?")->execute($values);
+    }
+
+    private function inspectSQLiteFile(string $dbPath): array
+    {
+        $pdo = new PDO('sqlite:' . $dbPath);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        $integrity = (string) $pdo->query('PRAGMA integrity_check')->fetchColumn();
+        if (strtolower($integrity) !== 'ok') {
+            throw new \RuntimeException('SQLite integrity check failed.');
+        }
+
+        $tableRows = $pdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")->fetchAll();
+        $tables = array_map(static fn(array $row): string => (string) $row['name'], $tableRows);
+
+        if (!in_array('weather_stations', $tables, true)) {
+            throw new \RuntimeException('The uploaded database does not contain the weather_stations table.');
+        }
+
+        $weatherStations = (int) $pdo->query('SELECT COUNT(*) FROM weather_stations')->fetchColumn();
+
+        return [$tables, $weatherStations];
+    }
+
+    private function uploadErrorMessage(int $error): string
+    {
+        return match ($error) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Uploaded file is too large.',
+            UPLOAD_ERR_PARTIAL => 'File upload was incomplete.',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Temporary upload directory is missing.',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write uploaded file to disk.',
+            UPLOAD_ERR_EXTENSION => 'Upload stopped by a PHP extension.',
+            default => 'Unknown upload error.',
+        };
     }
 
     private function json(array $data, int $statusCode = 200): void
