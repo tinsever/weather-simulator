@@ -97,6 +97,16 @@ class AdminController
     {
         $this->requireAuth();
 
+        $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        $postMaxSize = $this->parseIniSize((string) ini_get('post_max_size'));
+        if ($postMaxSize > 0 && $contentLength > $postMaxSize) {
+            $this->json([
+                'success' => false,
+                'error' => 'Uploaded file is too large for the server limit. Increase post_max_size/upload_max_filesize or choose a smaller file.',
+            ], 413);
+            return;
+        }
+
         $db = Database::getInstance();
         $stations = (int) $db->query('SELECT COUNT(*) FROM weather_stations')->fetchColumn();
         if ($stations > 0) {
@@ -610,6 +620,24 @@ class AdminController
             UPLOAD_ERR_CANT_WRITE => 'Failed to write uploaded file to disk.',
             UPLOAD_ERR_EXTENSION => 'Upload stopped by a PHP extension.',
             default => 'Unknown upload error.',
+        };
+    }
+
+    private function parseIniSize(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return 0;
+        }
+
+        $unit = strtolower(substr($value, -1));
+        $number = (float) $value;
+
+        return match ($unit) {
+            'g' => (int) ($number * 1024 * 1024 * 1024),
+            'm' => (int) ($number * 1024 * 1024),
+            'k' => (int) ($number * 1024),
+            default => (int) $number,
         };
     }
 
