@@ -14,7 +14,9 @@ if [ "$(id -u)" = "0" ]; then
         chmod 0777 "$DB_DIR" || true
     fi
 
-    exec gosu www-data sh -lc 'php -d variables_order=EGPCS scripts/bootstrap.php && php -d variables_order=EGPCS -d upload_max_filesize=64M -d post_max_size=64M -d max_file_uploads=20 -d display_errors=0 -d log_errors=1 -S 0.0.0.0:${PORT:-8080} -t . index.php'
+    gosu www-data php scripts/bootstrap.php
+    exec /usr/local/sbin/php-fpm -F
 fi
 
-exec sh -lc 'php -d variables_order=EGPCS scripts/bootstrap.php && php -d variables_order=EGPCS -d upload_max_filesize=64M -d post_max_size=64M -d max_file_uploads=20 -d display_errors=0 -d log_errors=1 -S 0.0.0.0:${PORT:-8080} -t . index.php'
+php scripts/bootstrap.php
+exec /usr/local/sbin/php-fpm -F

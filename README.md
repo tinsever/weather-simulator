@@ -1,4 +1,4 @@
-# Eulenmeteo PHP Version
+# Eulenmeteo 
 
 Weather simulation service for the fictional Principality of Eulenthal.
 
@@ -59,22 +59,6 @@ location / {
 }
 ```
 
-## Coolify + Dockerfile
-
-This repo includes a production `Dockerfile` (multi-stage build with Composer).
-
-In Coolify, use **Dockerfile** as build pack.
-
-In Coolify, set at least:
-- `ADMIN_PASSWORD`
-- `CRON_SECRET`
-- `SESSION_SECRET`
-
-Optional:
-- `APP_DEBUG=false`
-- `APP_TIMEZONE=Europe/Vaduz`
-- `DB_PATH=/app/database/clauswetter.db`
-
 ## Cron Job
 
 Set up a daily cron job to generate weather data:
@@ -98,9 +82,3 @@ Set up a daily cron job to generate weather data:
 | POST | /api/weather/generate | Generate weather now |
 | POST | /api/weather/generate-7days | Generate 7 days of data |
 | GET | /api/map/config | Map configuration |
-
-## Changes from Node.js Version
-
-1. **Clock Fix**: Hourly forecasts now display in ascending order (1, 2, 3... instead of 23, 22, 21...)
-2. **PHP 8.1+**: Uses modern PHP features (typed properties, match expressions, etc.)
-3. **Same Architecture**: Direct port of the Node.js weather simulation engine

@@ -3,6 +3,7 @@ services:
     build:
       context: .
       target: app
+    restart: unless-stopped
     environment:
       ADMIN_PASSWORD: change-me
       CRON_SECRET: change-me
@@ -10,16 +11,26 @@ services:
       APP_DEBUG: "false"
       APP_TIMEZONE: Europe/Vaduz
       DB_PATH: /app/database/clauswetter.db
+    expose:
+      - "9000"
     volumes:
       - app_database:/app/database
+
   web:
     build:
       context: .
       target: web
+    restart: unless-stopped
     depends_on:
       - app
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   app_database:
