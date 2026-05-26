@@ -13,8 +13,11 @@ services:
       - "9000"
     volumes:
       - app_database:/app/database
+    networks:
+      - internal
 
   web:
+    container_name: ifm_web
     image: ghcr.io/tinsever/weather-simulator-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
@@ -23,6 +26,9 @@ services:
       FASTCGI_HOST: app
     expose:
       - "80"
+    networks:
+      - internal
+      - proxy
 
   cron:
     image: ghcr.io/tinsever/weather-simulator-cron:${IMAGE_TAG:-latest}
@@ -38,6 +44,13 @@ services:
       DB_PATH: ${DB_PATH:-/app/database/clauswetter.db}
     volumes:
       - app_database:/app/database
+    networks:
+      - internal
 
 volumes:
   app_database:
+
+networks:
+  internal:
+  proxy:
+    external: true
