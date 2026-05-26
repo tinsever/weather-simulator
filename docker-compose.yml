@@ -20,6 +20,21 @@ services:
       - app
     ports:
       - "8080:80"
+  cron:
+    build:
+      context: .
+      target: cron
+    depends_on:
+      - app
+    environment:
+      ADMIN_PASSWORD: change-me
+      CRON_SECRET: change-me
+      SESSION_SECRET: change-me
+      APP_DEBUG: "false"
+      APP_TIMEZONE: Europe/Vaduz
+      DB_PATH: /app/database/clauswetter.db
+    volumes:
+      - app_database:/app/database
 
 volumes:
   app_database:

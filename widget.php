@@ -4,9 +4,20 @@
  * Fetches weather data from the Clauswetter API
  */
 
-$apiBaseUrl = 'https://eulenthal.mn-netz.de/api';
-$headerSvgUrl = 'https://eulenthal.mn-netz.de/nwep.svg?v=2';
-$iconBaseUrl = 'https://eulenthal.mn-netz.de/icons/';
+$scheme = 'http';
+if (
+    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+) {
+    $scheme = 'https';
+}
+
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$baseUrl = $scheme . '://' . $host;
+
+$apiBaseUrl = $baseUrl . '/api';
+$headerSvgUrl = $baseUrl . '/nwep.svg?v=2';
+$iconBaseUrl = $baseUrl . '/icons/';
 
 error_reporting(E_ALL);
 ini_set('display_errors', 0);

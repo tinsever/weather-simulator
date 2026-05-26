@@ -37,6 +37,7 @@ let overlayLayers = {
 };
 
 let dayWeatherCache = {};
+let cloudTextureCache = new Map();
 
 const weatherStateTranslations = {
     'sunny': 'Sonnig',
@@ -696,7 +697,7 @@ function renderOverlaysForHour(hour) {
         renderWeatherOverlay(stationDataForHour);
     }
     if (overlayLayers.clouds && cloudCanvas) {
-        renderCloudOverlay(stationDataForHour);
+        renderCloudOverlay(stationDataForHour, hour);
     }
     if (overlayLayers.wind && windCanvas) {
         renderWindOverlay(stationDataForHour);
@@ -871,7 +872,7 @@ function drawPrecipitationParticles(ctx, station, isSnow, intensity) {
     ctx.restore();
 }
 
-function renderCloudOverlay(stationData) {
+function renderCloudOverlay(stationData, hour) {
     const ctx = cloudCanvas.getContext('2d');
     
     const stationsWithClouds = stationData.filter(s => s.cloud_cover > 20 && s.x_coord && s.y_coord);
@@ -881,12 +882,15 @@ function renderCloudOverlay(stationData) {
     const PX_PER_KM = 23;
     // Current hour fractional (e.g. 14.3 = 14:18)
     const minutePhase = isAnimating ? ((Date.now() / 500) % 60) / 60 : 0;
-    const hourFrac = animationHour + minutePhase;
+    const hourFrac = hour + minutePhase;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'source-over';
     
     stationsWithClouds.forEach(station => {
         const coverage = station.cloud_cover / 100;
-        const radius = 280 + coverage * 400;
-        const cloudCount = Math.floor(6 + coverage * 14);
+        const radius = 280 + coverage * 460;
         const windSpeed = Math.max(Number(station.wind_speed) || 5, 5); // min 5 km/h
         const windDir = Number(station.wind_direction) || 0;
         // Wind direction = where wind comes FROM, so add 180 for movement direction
@@ -898,45 +902,156 @@ function renderCloudOverlay(stationData) {
         const driftX = Math.cos(windRad) * driftPx;
         const driftY = Math.sin(windRad) * driftPx;
         
-        const seed = station.id * 7 + Math.floor(station.cloud_cover / 10);
-        const seededRandom = (i) => {
-            const x = Math.sin(seed + i) * 10000;
-            return x - Math.floor(x);
-        };
-        
-        for (let i = 0; i < cloudCount; i++) {
-            const offsetX = (seededRandom(i * 2) - 0.5) * radius;
-            const offsetY = (seededRandom(i * 2 + 1) - 0.5) * radius * 0.6;
-            const cloudRadius = 60 + seededRandom(i + 50) * 120;
-            
-            // Wrap clouds: modulo map dimensions so they cycle back
-            let centerX = (station.x_coord + offsetX + driftX) % (cloudCanvas.width + cloudRadius * 2);
-            let centerY = (station.y_coord + offsetY + driftY) % (cloudCanvas.height + cloudRadius * 2);
-            if (centerX < -cloudRadius) centerX += cloudCanvas.width + cloudRadius * 2;
-            if (centerY < -cloudRadius) centerY += cloudCanvas.height + cloudRadius * 2;
-            
-            const gradient = ctx.createRadialGradient(
-                centerX, centerY, 0,
-                centerX, centerY, cloudRadius
-            );
-            
-            gradient.addColorStop(0, `rgba(200, 200, 210, ${0.5 * coverage})`);
-            gradient.addColorStop(0.4, `rgba(180, 180, 195, ${0.35 * coverage})`);
-            gradient.addColorStop(1, 'rgba(160, 160, 180, 0)');
-            
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.ellipse(
-                centerX,
-                centerY,
-                cloudRadius,
-                cloudRadius * 0.6,
-                windRad * 0.3, // tilt clouds slightly with wind
-                0, Math.PI * 2
-            );
-            ctx.fill();
-        }
+        const texture = getCloudReliefTexture(station, radius, hour);
+        const seed = station.id * 17 + Math.floor(Number(station.cloud_cover) || 0);
+        const randomX = seededCloudRandom(seed, 11) - 0.5;
+        const randomY = seededCloudRandom(seed, 29) - 0.5;
+        const anchorX = station.x_coord + randomX * radius * 0.25 + driftX;
+        const anchorY = station.y_coord + randomY * radius * 0.18 + driftY;
+
+        drawWrappedCloudTexture(ctx, texture.canvas, anchorX, anchorY, cloudCanvas.width, cloudCanvas.height);
     });
+
+    ctx.restore();
+}
+
+function getCloudReliefTexture(station, radius, hour) {
+    const coverage = Math.max(0.2, Math.min(1, (Number(station.cloud_cover) || 0) / 100));
+    const coverBand = Math.round(coverage * 12);
+    const hourBand = Math.floor(Number(hour) || 0);
+    const cellSize = coverage > 0.75 ? 10 : 12;
+    const key = [
+        station.id,
+        coverBand,
+        Math.round(Number(station.wind_direction) || 0),
+        Math.round((Number(station.wind_speed) || 0) / 3),
+        hourBand,
+        cellSize
+    ].join(':');
+
+    if (cloudTextureCache.has(key)) {
+        return cloudTextureCache.get(key);
+    }
+
+    const texture = buildCloudReliefTexture(station, radius, coverage, cellSize, hourBand);
+    cloudTextureCache.set(key, texture);
+
+    if (cloudTextureCache.size > 160) {
+        const oldestKey = cloudTextureCache.keys().next().value;
+        cloudTextureCache.delete(oldestKey);
+    }
+
+    return texture;
+}
+
+function buildCloudReliefTexture(station, radius, coverage, cellSize, hour) {
+    const width = Math.ceil(radius * 2);
+    const height = Math.ceil(radius * 1.24);
+    const cols = Math.ceil(width / cellSize);
+    const rows = Math.ceil(height / cellSize);
+    const field = new Float32Array(cols * rows);
+    const seed = (Number(station.id) || 1) * 97 + Math.round(coverage * 100) * 13 + hour * 31;
+    const threshold = 0.48 - coverage * 0.25;
+    const contrast = 1.15 + coverage * 0.9;
+
+    for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+            const nx = (x / Math.max(1, cols - 1)) * 2 - 1;
+            const ny = (y / Math.max(1, rows - 1)) * 2 - 1;
+            const falloff = Math.max(0, 1 - Math.pow(Math.abs(nx), 2.35) - Math.pow(Math.abs(ny), 2.05));
+            const ridge = cloudValueNoise(x * 0.42, y * 0.42, seed)
+                * 0.56 + cloudValueNoise(x * 0.18, y * 0.18, seed + 41) * 0.34
+                + cloudValueNoise(x * 0.08, y * 0.08, seed + 103) * 0.22;
+            const lump = Math.max(0, ridge * falloff - threshold) * contrast;
+            field[y * cols + x] = Math.min(1, lump);
+        }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+            const h = field[y * cols + x];
+            if (h <= 0.035) continue;
+
+            const west = field[y * cols + Math.max(0, x - 1)] || 0;
+            const east = field[y * cols + Math.min(cols - 1, x + 1)] || 0;
+            const north = field[Math.max(0, y - 1) * cols + x] || 0;
+            const south = field[Math.min(rows - 1, y + 1) * cols + x] || 0;
+            const relief = ((west - east) * 0.82 + (south - north) * 0.58);
+            const quantized = Math.round(h * 5) / 5;
+            const shade = Math.max(-0.26, Math.min(0.32, relief + (quantized - 0.5) * 0.18));
+            const base = 176 + Math.round(quantized * 58 + shade * 70);
+            const r = Math.max(128, Math.min(244, base + 15));
+            const g = Math.max(128, Math.min(244, base + 17));
+            const b = Math.max(138, Math.min(252, base + 28));
+            const alpha = Math.max(0, Math.min(0.72, 0.12 + h * (0.28 + coverage * 0.42)));
+            const inset = h > 0.78 ? 0 : 1;
+
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            ctx.fillRect(x * cellSize + inset, y * cellSize + inset, cellSize - inset, cellSize - inset);
+
+            if (h > 0.55) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.22, (h - 0.5) * 0.36)})`;
+                ctx.fillRect(x * cellSize + 1, y * cellSize + 1, Math.max(2, cellSize * 0.38), 2);
+            }
+        }
+    }
+
+    return { canvas, width, height };
+}
+
+function drawWrappedCloudTexture(ctx, texture, centerX, centerY, mapWidth, mapHeight) {
+    const x = centerX - texture.width / 2;
+    const y = centerY - texture.height / 2;
+    const periodX = mapWidth + texture.width;
+    const periodY = mapHeight + texture.height;
+    const baseX = positiveModulo(x + texture.width, periodX) - texture.width;
+    const baseY = positiveModulo(y + texture.height, periodY) - texture.height;
+
+    for (let oy = -periodY; oy <= periodY; oy += periodY) {
+        for (let ox = -periodX; ox <= periodX; ox += periodX) {
+            const drawX = baseX + ox;
+            const drawY = baseY + oy;
+            if (drawX > mapWidth || drawY > mapHeight || drawX + texture.width < 0 || drawY + texture.height < 0) {
+                continue;
+            }
+            ctx.drawImage(texture, Math.round(drawX), Math.round(drawY));
+        }
+    }
+}
+
+function cloudValueNoise(x, y, seed) {
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const tx = smoothCloudStep(x - x0);
+    const ty = smoothCloudStep(y - y0);
+    const a = seededCloudRandom(seed + x0 * 374761 + y0 * 668265, 1);
+    const b = seededCloudRandom(seed + (x0 + 1) * 374761 + y0 * 668265, 2);
+    const c = seededCloudRandom(seed + x0 * 374761 + (y0 + 1) * 668265, 3);
+    const d = seededCloudRandom(seed + (x0 + 1) * 374761 + (y0 + 1) * 668265, 4);
+    return lerp(lerp(a, b, tx), lerp(c, d, tx), ty);
+}
+
+function seededCloudRandom(seed, salt) {
+    const x = Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453;
+    return x - Math.floor(x);
+}
+
+function smoothCloudStep(t) {
+    return t * t * (3 - 2 * t);
+}
+
+function positiveModulo(value, modulus) {
+    return ((value % modulus) + modulus) % modulus;
+}
+
+function lerp(a, b, t) {
+    return a + (b - a) * t;
 }
 
 function renderWindOverlay(stationData) {

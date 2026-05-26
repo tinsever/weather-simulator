@@ -1,0 +1,1 @@
+0 0 * * * php /app/scripts/run-cron.php >> /proc/1/fd/1 2>&1

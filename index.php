@@ -282,7 +282,12 @@ if ($requestUri === '/' || $requestUri === '') {
     exit;
 }
 
-$staticPaths = ['/css/', '/js/', '/maps/', '/font/', '/admin/'];
+if ($requestUri === '/widget' || $requestUri === '/widget/') {
+    require __DIR__ . '/widget.php';
+    exit;
+}
+
+$staticPaths = ['/css/', '/js/', '/maps/', '/font/', '/admin/', '/icons/'];
 foreach ($staticPaths as $staticPath) {
     if (strpos($requestUri, $staticPath) === 0) {
         serveStaticFile($requestUri);

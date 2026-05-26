@@ -1,0 +1,41 @@
+services:
+  app:
+    image: ghcr.io/tinsever/weather-simulator-app:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CRON_SECRET: ${CRON_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Vaduz}
+      DB_PATH: ${DB_PATH:-/app/database/clauswetter.db}
+    expose:
+      - "9000"
+    volumes:
+      - app_database:/app/database
+
+  web:
+    image: ghcr.io/tinsever/weather-simulator-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - app
+    expose:
+      - "80"
+
+  cron:
+    image: ghcr.io/tinsever/weather-simulator-cron:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CRON_SECRET: ${CRON_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Vaduz}
+      DB_PATH: ${DB_PATH:-/app/database/clauswetter.db}
+    volumes:
+      - app_database:/app/database
+
+volumes:
+  app_database:
