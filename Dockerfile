@@ -30,8 +30,10 @@ ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 FROM nginx:1.27-alpine AS web
 WORKDIR /app
 
+ENV FASTCGI_HOST=app
+
 COPY . /app
-COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 

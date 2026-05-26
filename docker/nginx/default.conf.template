@@ -15,7 +15,7 @@ server {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME /app$fastcgi_script_name;
         fastcgi_param DOCUMENT_ROOT /app;
-        fastcgi_pass app:9000;
+        fastcgi_pass ${FASTCGI_HOST}:9000;
     }
 
     location ~* \.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|html)$ {
