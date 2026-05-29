@@ -1672,8 +1672,8 @@ function updatePrognosis() {
         if (mountainOnly) {
             dayStations = dayStations.filter(s => s.elevation > 800);
         } else {
-            // Tal-/Referenzlagen (Vaduz-Niveau), ohne Gipfelstationen in der Landesprognose
-            dayStations = dayStations.filter(s => s.elevation <= 800);
+            // Tal-/Referenzlagen (Vaduz ~450 m), ohne Bergstationen in der Landesprognose
+            dayStations = dayStations.filter(s => s.elevation <= 550);
         }
         if (!dayStations.length) return '';
 

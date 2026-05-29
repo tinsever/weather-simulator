@@ -168,7 +168,7 @@ class SynopticEngine
     // Seasonal multipliers on transition weights
     private const SEASON_WEIGHTS = [
         'winter' => ['high_pressure'=>1.0,'westwind'=>1.2,'front_cold'=>1.3,'front_warm'=>0.6,'nordstau'=>1.3,'foehn'=>0.5,'bise'=>1.5,'flat_pressure'=>0.4],
-        'spring' => ['high_pressure'=>1.0,'westwind'=>1.1,'front_cold'=>1.0,'front_warm'=>1.2,'nordstau'=>0.8,'foehn'=>1.3,'bise'=>0.7,'flat_pressure'=>1.0],
+        'spring' => ['high_pressure'=>1.4,'westwind'=>1.0,'front_cold'=>0.55,'front_warm'=>1.3,'nordstau'=>0.45,'foehn'=>1.6,'bise'=>0.25,'flat_pressure'=>1.1],
         'summer' => ['high_pressure'=>1.3,'westwind'=>0.8,'front_cold'=>0.9,'front_warm'=>0.7,'nordstau'=>0.5,'foehn'=>0.8,'bise'=>0.3,'flat_pressure'=>1.8],
         'autumn' => ['high_pressure'=>1.0,'westwind'=>1.2,'front_cold'=>1.1,'front_warm'=>0.8,'nordstau'=>1.0,'foehn'=>1.2,'bise'=>0.8,'flat_pressure'=>0.7],
     ];
@@ -365,10 +365,7 @@ class SynopticEngine
             $windDir = $this->lerp($dirMin, $dirMax, $rng(300));
         }
 
-        $tempAdv = $this->applySeasonalTempAdvection(
-            $this->lerp($params['temp_adv'][0], $params['temp_adv'][1], $rng(400)),
-            $month
-        );
+        $tempAdv = $this->lerp($params['temp_adv'][0], $params['temp_adv'][1], $rng(400));
 
         // Pressure centre position
         $pCenterX = self::MAP_CX + $params['p_center_dx'] + ($rng(500) - 0.5) * 600;
@@ -429,17 +426,23 @@ class SynopticEngine
     private function applySeasonalTempAdvection(float $tempAdv, int $month): float
     {
         if ($tempAdv >= 0) {
-            return $tempAdv;
+            return round($tempAdv, 2);
         }
 
         $factor = match (true) {
-            $month >= 6 && $month <= 8 => 0.35,
-            $month >= 3 && $month <= 5 => 0.55,
-            $month >= 9 && $month <= 11 => 0.7,
+            $month >= 6 && $month <= 8 => 0.2,
+            $month >= 4 && $month <= 5 => 0.3,
+            $month >= 9 && $month <= 11 => 0.55,
             default => 1.0,
         };
 
-        return round($tempAdv * $factor, 2);
+        $tempAdv = $tempAdv * $factor;
+
+        if ($month >= 4 && $month <= 9) {
+            $tempAdv = max($tempAdv, -1.0);
+        }
+
+        return round($tempAdv, 2);
     }
 
     private function rollTransition(?string $prevType, string $season, int $seed): string

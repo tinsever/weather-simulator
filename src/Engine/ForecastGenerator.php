@@ -36,18 +36,15 @@ class ForecastGenerator
             $dateStr = $forecastDate->format('Y-m-d');
             
             $existing = Forecast::exists($station['id'], $dateStr);
-            
-            if (!$existing || $dayOffset <= 1) {
-                $forecast = $this->generateDayForecast($stationDetails, $forecastDate, $dayOffset);
-                
-                if ($existing) {
-                    Forecast::update($station['id'], $dateStr, $forecast);
-                } else {
-                    Forecast::create($forecast);
-                }
-                
-                $forecasts[] = array_merge(['date' => $dateStr], $forecast);
+            $forecast = $this->generateDayForecast($stationDetails, $forecastDate, $dayOffset);
+
+            if ($existing) {
+                Forecast::update($station['id'], $dateStr, $forecast);
+            } else {
+                Forecast::create($forecast);
             }
+
+            $forecasts[] = array_merge(['date' => $dateStr], $forecast);
         }
         
         $cutoffDate = $today->modify('-7 days')->format('Y-m-d');
@@ -79,8 +76,14 @@ class ForecastGenerator
         $randomHigh = (mt_rand() / mt_getrandmax() - 0.5) * 4 * $randomFactor;
         $randomLow = (mt_rand() / mt_getrandmax() - 0.5) * 4 * $randomFactor;
         
-        $tempHigh = round(($baseHigh + $randomHigh) * 10) / 10;
-        $tempLow = round(($baseLow + $randomLow) * 10) / 10;
+        $clamped = ClimateData::clampToTemperatureRange(
+            $month,
+            (float) ($station['elevation'] ?? 450),
+            ($baseHigh + $randomHigh),
+            ($baseLow + $randomLow)
+        );
+        $tempHigh = $clamped['high'];
+        $tempLow = $clamped['low'];
         
         $daysInMonth = (int) $date->format('t');
         $basePrecipProb = (($precipData['rainyDays'] + $precipData['snowDays']) / $daysInMonth) * 100;
@@ -172,12 +175,20 @@ class ForecastGenerator
             (int) round(100 - ($dayOffset * 8) - max(0, 24 - count($hours)) * 1.2)
         );
 
+        $month = (int) $date->format('n');
+        $clamped = ClimateData::clampToTemperatureRange(
+            $month,
+            (float) ($station['elevation'] ?? 450),
+            max($temps),
+            min($temps)
+        );
+
         return [
             'station_id' => $station['id'],
             'forecast_date' => $dateStr,
             'generated_at' => date('Y-m-d H:i:s'),
-            'temp_high' => round(max($temps), 1),
-            'temp_low' => round(min($temps), 1),
+            'temp_high' => $clamped['high'],
+            'temp_low' => $clamped['low'],
             'weather_state' => $dominantState,
             'precipitation_probability' => max(0, min(100, $precipProbability)),
             'precipitation_amount' => round($precipAmount, 1),

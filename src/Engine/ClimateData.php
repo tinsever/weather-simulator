@@ -35,11 +35,12 @@ class ClimateData
         12 => ['total' => 70, 'rainyDays' => 10, 'snowDays' => 5],
     ];
 
-    public const HOURLY_TEMPERATURE_OFFSET = [
-        0 => -3.5, 1 => -3.8, 2 => -4.0, 3 => -4.2, 4 => -4.0, 5 => -3.5,
-        6 => -2.5, 7 => -1.0, 8 => 0.5, 9 => 1.5, 10 => 2.2, 11 => 2.8,
-        12 => 3.2, 13 => 3.5, 14 => 3.5, 15 => 3.2, 16 => 2.5, 17 => 1.5,
-        18 => 0.5, 19 => -0.5, 20 => -1.2, 21 => -1.8, 22 => -2.5, 23 => -3.0,
+    /** Diurnal blend 0 = daily min, 1 = daily max (peak ~13–14 h). */
+    private const DIURNAL_BLEND = [
+        0 => 0.0, 1 => 0.0, 2 => 0.0, 3 => 0.0, 4 => 0.05, 5 => 0.12, 6 => 0.28,
+        7 => 0.48, 8 => 0.68, 9 => 0.82, 10 => 0.92, 11 => 0.97, 12 => 1.0,
+        13 => 1.0, 14 => 1.0, 15 => 0.97, 16 => 0.9, 17 => 0.78, 18 => 0.62,
+        19 => 0.45, 20 => 0.3, 21 => 0.18, 22 => 0.08, 23 => 0.02,
     ];
 
     public const SEASONAL_WIND = [
@@ -85,21 +86,42 @@ class ClimateData
     {
         $month = (int) $date->format('n');
         $monthData = self::MONTHLY_TEMPERATURES[$month];
-        $baseTemp = $monthData['avg'] + self::HOURLY_TEMPERATURE_OFFSET[$hour];
         $elevationAdjustment = self::getElevationTemperatureAdjustment($elevation);
-        return $baseTemp + $elevationAdjustment;
+        $blend = self::DIURNAL_BLEND[$hour] ?? 0.5;
+        $dailyMin = $monthData['min'] + $elevationAdjustment;
+        $dailyMax = $monthData['max'] + $elevationAdjustment;
+
+        return $dailyMin + ($dailyMax - $dailyMin) * $blend;
     }
 
     public static function getTemperatureRange(int $month, float $elevation = 450): array
     {
         $monthData = self::MONTHLY_TEMPERATURES[$month];
         $elevationAdjustment = self::getElevationTemperatureAdjustment($elevation);
-        
+        $slack = ($month >= 4 && $month <= 9) ? 0.5 : 2.0;
+
         return [
-            'min' => $monthData['min'] + $elevationAdjustment - 2,
-            'max' => $monthData['max'] + $elevationAdjustment + 2,
+            'min' => $monthData['min'] + $elevationAdjustment - $slack,
+            'max' => $monthData['max'] + $elevationAdjustment + $slack,
             'avg' => $monthData['avg'] + $elevationAdjustment,
         ];
+    }
+
+    public static function clampToTemperatureRange(
+        int $month,
+        float $elevation,
+        float $tempHigh,
+        float $tempLow
+    ): array {
+        $range = self::getTemperatureRange($month, $elevation);
+        $high = max($range['min'], min($range['max'], $tempHigh));
+        $low = max($range['min'], min($range['max'], $tempLow));
+
+        if ($low > $high) {
+            $low = min($low, $high);
+        }
+
+        return ['high' => round($high, 1), 'low' => round($low, 1)];
     }
 
     public static function getPrecipitationProbability(int $month): float
