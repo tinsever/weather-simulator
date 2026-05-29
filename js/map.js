@@ -1669,7 +1669,12 @@ function updatePrognosis() {
             };
         });
 
-        if (mountainOnly) dayStations = dayStations.filter(s => s.elevation > 800);
+        if (mountainOnly) {
+            dayStations = dayStations.filter(s => s.elevation > 800);
+        } else {
+            // Tal-/Referenzlagen (Vaduz-Niveau), ohne Gipfelstationen in der Landesprognose
+            dayStations = dayStations.filter(s => s.elevation <= 800);
+        }
         if (!dayStations.length) return '';
 
         const highs = dayStations.map(s => s.tempHigh);

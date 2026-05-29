@@ -400,8 +400,8 @@ class WeatherSimulator
         } elseif ($newTemp > $range['max'] && $newTemp > $lastTemp) {
             $newTemp = $lastTemp - min($maxChange, 0.1);
         }
-        
-        return $newTemp;
+
+        return max($range['min'], min($range['max'], round($newTemp, 1)));
     }
 
     private function generatePrecipitation(string $weatherState, \DateTimeInterface $timestamp, array $station, ?array $synoptic = null): float

@@ -4,19 +4,20 @@ namespace Engine;
 
 class ClimateData
 {
+    /** Monthly normals for Vaduz (reference elevation ~450 m), °C. */
     public const MONTHLY_TEMPERATURES = [
-        1 => ['avg' => -1, 'min' => -5, 'max' => 3],
-        2 => ['avg' => 1, 'min' => -3, 'max' => 5],
-        3 => ['avg' => 5, 'min' => 0, 'max' => 10],
-        4 => ['avg' => 9, 'min' => 3, 'max' => 15],
-        5 => ['avg' => 14, 'min' => 8, 'max' => 20],
-        6 => ['avg' => 17, 'min' => 11, 'max' => 23],
-        7 => ['avg' => 19, 'min' => 13, 'max' => 25],
-        8 => ['avg' => 18, 'min' => 12, 'max' => 24],
-        9 => ['avg' => 15, 'min' => 9, 'max' => 21],
-        10 => ['avg' => 9, 'min' => 4, 'max' => 14],
-        11 => ['avg' => 4, 'min' => 0, 'max' => 8],
-        12 => ['avg' => 0, 'min' => -4, 'max' => 4],
+        1 => ['avg' => 0.8, 'min' => -2.7, 'max' => 4.3],
+        2 => ['avg' => 2.1, 'min' => -1.8, 'max' => 6.0],
+        3 => ['avg' => 6.3, 'min' => 1.9, 'max' => 11.1],
+        4 => ['avg' => 9.9, 'min' => 4.9, 'max' => 15.1],
+        5 => ['avg' => 14.4, 'min' => 9.3, 'max' => 19.8],
+        6 => ['avg' => 17.1, 'min' => 12.2, 'max' => 22.3],
+        7 => ['avg' => 19.0, 'min' => 14.1, 'max' => 24.5],
+        8 => ['avg' => 18.4, 'min' => 13.9, 'max' => 23.7],
+        9 => ['avg' => 14.9, 'min' => 10.6, 'max' => 19.8],
+        10 => ['avg' => 10.9, 'min' => 6.7, 'max' => 15.5],
+        11 => ['avg' => 5.2, 'min' => 1.7, 'max' => 8.9],
+        12 => ['avg' => 1.9, 'min' => -1.4, 'max' => 5.1],
     ];
 
     public const MONTHLY_PRECIPITATION = [

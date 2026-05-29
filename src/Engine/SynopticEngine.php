@@ -297,7 +297,8 @@ class SynopticEngine
         }
 
         // ── Temperature advection ──
-        $tempAdv = (float) $regime['temp_advection'];
+        $month = (int) $timestamp->format('n');
+        $tempAdv = $this->applySeasonalTempAdvection((float) $regime['temp_advection'], $month);
         if ($regime['front_active']) {
             $fd = $this->frontDistance($regime, $x, $y, $hour);
             $fdKm = $fd / self::PX_PER_KM;
@@ -364,7 +365,10 @@ class SynopticEngine
             $windDir = $this->lerp($dirMin, $dirMax, $rng(300));
         }
 
-        $tempAdv = $this->lerp($params['temp_adv'][0], $params['temp_adv'][1], $rng(400));
+        $tempAdv = $this->applySeasonalTempAdvection(
+            $this->lerp($params['temp_adv'][0], $params['temp_adv'][1], $rng(400)),
+            $month
+        );
 
         // Pressure centre position
         $pCenterX = self::MAP_CX + $params['p_center_dx'] + ($rng(500) - 0.5) * 600;
@@ -417,6 +421,25 @@ class SynopticEngine
             'front_speed_x'    => round($frontSpeedX, 2),
             'front_speed_y'    => round($frontSpeedY, 2),
         ];
+    }
+
+    /**
+     * Dampen cold-air advection in the warm half-year so spring/summer stay near Vaduz normals.
+     */
+    private function applySeasonalTempAdvection(float $tempAdv, int $month): float
+    {
+        if ($tempAdv >= 0) {
+            return $tempAdv;
+        }
+
+        $factor = match (true) {
+            $month >= 6 && $month <= 8 => 0.35,
+            $month >= 3 && $month <= 5 => 0.55,
+            $month >= 9 && $month <= 11 => 0.7,
+            default => 1.0,
+        };
+
+        return round($tempAdv * $factor, 2);
     }
 
     private function rollTransition(?string $prevType, string $season, int $seed): string
